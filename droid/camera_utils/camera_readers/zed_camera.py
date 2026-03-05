@@ -132,6 +132,7 @@ class ZedCamera:
         sl_params = sl.InitParameters(**init_params)
         sl_params.set_from_serial_number(int(self.serial_number))
         sl_params.camera_image_flip = sl.FLIP_MODE.OFF
+        sl_params.open_timeout_sec = -1 # infinite attempts to open camera
         status = self._cam.open(sl_params)
         if status != sl.ERROR_CODE.SUCCESS:
             raise RuntimeError("Camera Failed To Open")
@@ -202,18 +203,6 @@ class ZedCamera:
                     self.serial_number + "_left": self._process_frame(self._left_img),
                     self.serial_number + "_right": self._process_frame(self._right_img),
                 }
-        # if self.depth:
-        # 	self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH, resolution=self.resolution)
-        # 	self._cam.retrieve_measure(self._right_depth, sl.MEASURE.DEPTH_RIGHT, resolution=self.resolution)
-        # 	data_dict['depth'] = {
-        # 		self.serial_number + '_left': self._left_depth.get_data().copy(),
-        # 		self.serial_number + '_right': self._right_depth.get_data().copy()}
-        # if self.pointcloud:
-        # 	self._cam.retrieve_measure(self._left_pointcloud, sl.MEASURE.XYZRGBA, resolution=self.resolution)
-        # 	self._cam.retrieve_measure(self._right_pointcloud, sl.MEASURE.XYZRGBA_RIGHT, resolution=self.resolution)
-        # 	data_dict['pointcloud'] = {
-        # 		self.serial_number + '_left': self._left_pointcloud.get_data().copy(),
-        # 		self.serial_number + '_right': self._right_pointcloud.get_data().copy()}
 
         return data_dict, timestamp_dict
 

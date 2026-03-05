@@ -63,6 +63,10 @@ def collect_trajectory(
     num_steps = 0
     if reset_robot:
         env.reset(randomize=randomize_reset)
+        try:
+            policy.reset()
+        except:
+            print('policy does not have reset()')
 
     # Begin! #
     while True:
@@ -80,7 +84,7 @@ def collect_trajectory(
 
         # Get Action #
         control_timestamps["policy_start"] = time_ms()
-        if policy is None:
+        if policy is None or skip_action:
             action, controller_action_info = controller.forward(obs, include_info=True)
         else:
             action = policy.forward(obs)
@@ -123,6 +127,10 @@ def collect_trajectory(
 
         # Close Files And Return #
         if end_traj:
+            try:
+                policy.reset()
+            except:
+                print('policy does not have reset()')
             if recording_folderpath:
                 env.camera_reader.stop_recording()
             if save_filepath:

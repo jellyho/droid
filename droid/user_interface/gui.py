@@ -780,21 +780,21 @@ class SceneConfigurationPage(tk.Frame):
             self.task_txt.insert(1.0, no_tasks_text)
             return
 
-        # Check that cameras are calibrated #
-        calib_info_dict = self.controller.robot.check_calibration_info(remove_hand_camera=True)
-        if len(calib_info_dict["missing"]) > 0:
-            self.controller.show_frame(IncompleteCalibration)
-            return
-        if len(calib_info_dict["old"]) > 0:
-            self.controller.show_frame(OldCalibration)
-            return
+        # # Check that cameras are calibrated #
+        # calib_info_dict = self.controller.robot.check_calibration_info(remove_hand_camera=True)
+        # if len(calib_info_dict["missing"]) > 0:
+        #     self.controller.show_frame(IncompleteCalibration)
+        #     return
+        # if len(calib_info_dict["old"]) > 0:
+        #     self.controller.show_frame(OldCalibration)
+        #     return
 
-        # Check that scene isn't stale #
-        last_scene_change = load_gui_info()["scene_id_timestamp"]
-        stale_scene = (time.time() - last_scene_change) > 3600
-        if stale_scene:
-            self.controller.show_frame(OldScene)
-            return
+        # # Check that scene isn't stale #
+        # last_scene_change = load_gui_info()["scene_id_timestamp"]
+        # stale_scene = (time.time() - last_scene_change) > 3600
+        # if stale_scene:
+        #     self.controller.show_frame(OldScene)
+        #     return
 
         # If everything is okay, proceed
         self.controller.show_frame(RequestedBehaviorPage)
@@ -1217,9 +1217,10 @@ class CameraPage(tk.Frame):
             self.controller.frames[RequestedBehaviorPage].keep_last_task()
 
         # Check For Scene Changes #
-        num_traj = self.controller.num_traj_saved
-        move_robot = (num_traj % move_robot_frequency == 0) and (num_traj > 0)
-        scene_change = (np.random.uniform() < scene_change_prob) or move_robot
+        # num_traj = self.controller.num_traj_saved
+        # move_robot = (num_traj % move_robot_frequency == 0) and (num_traj > 0)
+        # scene_change = (np.random.uniform() < scene_change_prob) or move_robot
+        scene_change = False
 
         # Move To Next Page
         time.sleep(0.1)  # Prevents bug where robot doesnt wait to reset

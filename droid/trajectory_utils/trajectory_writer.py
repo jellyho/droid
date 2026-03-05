@@ -11,37 +11,40 @@ import numpy as np
 from droid.misc.subprocess_utils import run_threaded_command
 
 
-def write_dict_to_hdf5(hdf5_file, data_dict, keys_to_ignore=["image", "depth", "pointcloud"]):
-    for key in data_dict.keys():
-        # Pass Over Specified Keys #
-        if key in keys_to_ignore:
-            continue
+def write_dict_to_hdf5(hdf5_file, data_dict, keys_to_ignore=["depth", "pointcloud"], root=True):
+    if root and data_dict["observation"]["timestamp"]['skip_action']:
+        pass
+    else:
+        for key in data_dict.keys():
+            # Pass Over Specified Keys #
+            if key in keys_to_ignore:
+                continue
 
-        # Examine Data #
-        curr_data = data_dict[key]
-        if type(curr_data) == list:
-            curr_data = np.array(curr_data)
-        dtype = type(curr_data)
+            # Examine Data #
+            curr_data = data_dict[key]
+            if type(curr_data) == list:
+                curr_data = np.array(curr_data)
+            dtype = type(curr_data)
 
-        # Unwrap If Dictionary #
-        if dtype == dict:
+            # Unwrap If Dictionary #
+            if dtype == dict:
+                if key not in hdf5_file:
+                    hdf5_file.create_group(key)
+                write_dict_to_hdf5(hdf5_file[key], curr_data, root=False)
+                continue
+
+            # Make Room For Data #
             if key not in hdf5_file:
-                hdf5_file.create_group(key)
-            write_dict_to_hdf5(hdf5_file[key], curr_data)
-            continue
-
-        # Make Room For Data #
-        if key not in hdf5_file:
-            if dtype != np.ndarray:
-                dshape = ()
+                if dtype != np.ndarray:
+                    dshape = ()
+                else:
+                    dtype, dshape = curr_data.dtype, curr_data.shape
+                hdf5_file.create_dataset(key, (1, *dshape), maxshape=(None, *dshape), dtype=dtype)
             else:
-                dtype, dshape = curr_data.dtype, curr_data.shape
-            hdf5_file.create_dataset(key, (1, *dshape), maxshape=(None, *dshape), dtype=dtype)
-        else:
-            hdf5_file[key].resize(hdf5_file[key].shape[0] + 1, axis=0)
+                hdf5_file[key].resize(hdf5_file[key].shape[0] + 1, axis=0)
 
-        # Save Data #
-        hdf5_file[key][-1] = curr_data
+            # Save Data #
+            hdf5_file[key][-1] = curr_data
 
 
 class TrajectoryWriter:
@@ -61,7 +64,7 @@ class TrajectoryWriter:
 
         # Start HDF5 Writer Thread #
         def hdf5_writer(data):
-            return write_dict_to_hdf5(self._hdf5_file, data)
+            return write_dict_to_hdf5(self._hdf5_file, data, root=True)
 
         run_threaded_command(self._write_from_queue, args=(hdf5_writer, self._queue_dict["hdf5"]))
 
@@ -80,11 +83,12 @@ class TrajectoryWriter:
                 data = queue.get(timeout=1)
             except Empty:
                 continue
+            
             writer(data)
             queue.task_done()
 
     def _update_video_files(self, timestep):
-        image_dict = timestep["observations"]["image"]
+        image_dict = timestep["observation"]["image"]
 
         for video_id in image_dict:
             # Get Frame #
