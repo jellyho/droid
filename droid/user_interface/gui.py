@@ -699,6 +699,7 @@ class SceneConfigurationPage(tk.Frame):
         group_lbl.place(relx=0.01, rely=0.6)
 
         self.task_txt = tk.Text(self, height=15, width=65, font=Font(size=15))
+        self.task_txt.insert("1.0", "please_just_press_collect")
         self.task_txt.place(relx=0.02, rely=0.64)
 
         # Ready Button #
@@ -789,7 +790,7 @@ class SceneConfigurationPage(tk.Frame):
         #     self.controller.show_frame(OldCalibration)
         #     return
 
-        # # Check that scene isn't stale #
+        # Check that scene isn't stale #
         # last_scene_change = load_gui_info()["scene_id_timestamp"]
         # stale_scene = (time.time() - last_scene_change) > 3600
         # if stale_scene:
