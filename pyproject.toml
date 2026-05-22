@@ -19,6 +19,7 @@ dependencies = [
     "gym",
     "h5py",
     "imageio",
+    "lerobot>=0.4.4; python_version >= '3.10'",
     "matplotlib",
     "mujoco==2.3.2",
     "open3d",
