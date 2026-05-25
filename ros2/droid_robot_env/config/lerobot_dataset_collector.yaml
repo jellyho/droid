@@ -1,0 +1,37 @@
+lerobot_dataset_collector:
+  ros__parameters:
+    dataset_name: droid_lerobot_dataset
+    dataset_root: ~/jellyho/lerobot_datasets
+    lerobot_repo_id: "jellyho/droid_test"
+    language_instruction: "pick up the carrot"
+    operator: "jellyho"
+    robot: franka
+    fps: 10.0
+    use_lerobot_native: true
+    use_lerobot_videos: true
+
+    # Robot state topics (Float64MultiArray). Each becomes a LeRobot feature.
+    # observation.state is the concatenation of all in this order.
+    robot_state_topics:
+      - /droid_ros/joint_positions
+      - /droid_ros/joint_velocities
+      - /droid_ros/cartesian_position
+      - /droid_ros/gripper_position
+
+    # Action topic (Float64MultiArray).
+    applied_action_topic: /gello/joint_command
+
+    # Camera topics (CompressedImage or Image).
+    camera_topics:
+      - /droid_ros/camera/wrist_left/image_raw/compressed
+
+    # Gello button topics.
+    # success_topic toggles: first press starts recording, second press saves as success.
+    success_topic: /gello/switch/success
+    failure_topic: /gello/switch/failed
+    button_trigger_value: true
+    min_episode_steps: 1
+
+    # Sent by collector to control the robot between episodes.
+    action_toggle_topic: /gello/switch/record
+    home_topic: /droid_ros/go_home
