@@ -291,10 +291,9 @@ class LeRobotDatasetCollectorNode(Node):
         if self.recording:
             self.get_logger().warning("Start trigger ignored; already recording.")
             return
-        self._send_action_toggle()
         self.recording = True
         self.episode_steps = []
-        self.get_logger().info(f"Recording episode {self.episode_id}... (action enabled)")
+        self.get_logger().info(f"Recording episode {self.episode_id}...")
 
     def _finish_episode(self, success: bool):
         if not self.recording:
@@ -315,16 +314,13 @@ class LeRobotDatasetCollectorNode(Node):
             return
 
         self.recording = False
-        self._send_action_toggle()
-        self._send_home()
         episode_id = self.episode_id
         steps = self.episode_steps
         self.episode_steps = []
         self.episode_id += 1
         label = "success" if success else "failure"
         self.get_logger().info(
-            f"Episode {episode_id} finished ({label}, {len(steps)} steps). "
-            f"Action disabled, robot going home. Saving..."
+            f"Episode {episode_id} finished ({label}, {len(steps)} steps). Saving..."
         )
         self.saving = True
         self._save_thread = threading.Thread(

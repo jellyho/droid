@@ -1,12 +1,12 @@
 lerobot_dataset_collector:
   ros__parameters:
-    dataset_name: droid_lerobot_dataset
+    dataset_name: droid_scoop_candy2
     dataset_root: ~/jellyho/lerobot_datasets
-    lerobot_repo_id: "jellyho/droid_test"
-    language_instruction: "pick up the carrot"
+    lerobot_repo_id: "jellyho/droid_scoop_candy"
+    language_instruction: "Scoop up the candy from the bowl and put it on the blue plate"
     operator: "jellyho"
     robot: franka
-    fps: 10.0
+    fps: 15.0
     use_lerobot_native: true
     use_lerobot_videos: true
 
@@ -24,6 +24,7 @@ lerobot_dataset_collector:
     # Camera topics (CompressedImage or Image).
     camera_topics:
       - /droid_ros/camera/wrist_left/image_raw/compressed
+      - /droid_ros/camera/side_view_1_left/image_raw/compressed
 
     # Gello button topics.
     # success_topic toggles: first press starts recording, second press saves as success.
