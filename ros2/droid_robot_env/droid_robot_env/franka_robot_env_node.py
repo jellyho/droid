@@ -11,6 +11,7 @@ print("[franka_robot_env_node] importing ROS/Python dependencies...", flush=True
 try:
     import numpy as np
     import rclpy
+    import yaml
     from rcl_interfaces.msg import ParameterDescriptor
     from rclpy.node import Node
     import cv2
@@ -24,20 +25,120 @@ except Exception:
 print("[franka_robot_env_node] ROS/Python dependency imports complete.", flush=True)
 
 
+# Keys a `modes:` section in droid_robot_env.yaml is allowed to set. Anything
+# else belongs at the top level of the file, shared by every mode.
+MODE_OVERRIDABLE_KEYS = ("action_enabled", "action_topic", "action_toggle_topic", "control_hz")
+MODE_REQUIRED_KEYS = ("action_enabled", "action_topic", "action_toggle_topic")
+
+
 def _default_config_path() -> Path:
     return Path(__file__).resolve().parents[1] / "config" / "droid_robot_env.yaml"
 
 
+def _load_modes(config_path: Path) -> dict:
+    """Read the `modes:` block out of the node's params file."""
+    with config_path.open() as handle:
+        config = yaml.safe_load(handle) or {}
+    params = (config.get("droid_ros") or {}).get("ros__parameters") or {}
+    modes = params.get("modes") or {}
+    if not isinstance(modes, dict):
+        _die(f"'modes' in {config_path} must map a mode name to its overrides.")
+    return modes
+
+
+def _mode_usage(modes: dict) -> str:
+    lines = [
+        "  usage: franka_ros <mode>",
+        "",
+        f"  modes defined in {_default_config_path().name}:",
+    ]
+    if not modes:
+        lines.append("    (none defined)")
+    for name in sorted(modes):
+        overrides = modes[name] or {}
+        topic = str(overrides.get("action_topic", "?"))
+        enabled = str(overrides.get("action_enabled", "?")).lower()
+        lines.append(f"    {name:<9}{topic:<26}action_enabled={enabled}")
+    return "\n".join(lines)
+
+
+def _die(message: str, modes=None):
+    print(f"[franka_robot_env_node] {message}", flush=True)
+    if modes is not None:
+        print("", flush=True)
+        print(_mode_usage(modes), flush=True)
+    sys.exit(2)
+
+
+def _validate_mode(name: str, overrides) -> dict:
+    if not isinstance(overrides, dict):
+        _die(f"mode '{name}' must map a parameter name to its value.")
+    unknown = sorted(key for key in overrides if key not in MODE_OVERRIDABLE_KEYS)
+    if unknown:
+        _die(
+            f"mode '{name}' sets {', '.join(unknown)}, which a mode may not override. "
+            f"Allowed keys: {', '.join(MODE_OVERRIDABLE_KEYS)}."
+        )
+    missing = [key for key in MODE_REQUIRED_KEYS if key not in overrides]
+    if missing:
+        _die(f"mode '{name}' is missing required key(s): {', '.join(missing)}.")
+    return overrides
+
+
+def _param_override(key: str, value) -> str:
+    if isinstance(value, bool):
+        return f"{key}:={'true' if value else 'false'}"
+    return f"{key}:={value}"
+
+
 def _with_repo_params_file(args):
+    """Build the ROS argv: params file, then the selected mode's overrides.
+
+    Mode overrides are inserted before any caller-supplied ROS arguments, so an
+    explicit `-p key:=value` on the command line still wins.
+    """
     argv = list(sys.argv if args is None else args)
     config_path = _default_config_path()
     if not config_path.exists():
         raise FileNotFoundError(f"Default ROS2 config not found: {config_path}")
 
+    modes = _load_modes(config_path)
+
+    mode = None
+    rest = argv[1:]
+    if rest and not rest[0].startswith("-"):
+        mode, rest = rest[0], rest[1:]
+
+    if mode is None:
+        _die("no mode given.", modes)
+    if mode not in modes:
+        _die(f"unknown mode '{mode}'.", modes)
+
+    overrides = _validate_mode(mode, modes[mode])
+    applied = [key for key in MODE_OVERRIDABLE_KEYS if key in overrides]
+
+    override_args = []
+    for key in applied:
+        override_args += ["-p", _param_override(key, overrides[key])]
+
+    if "--ros-args" in rest:
+        split = rest.index("--ros-args")
+        user_pre, user_ros = rest[:split], rest[split + 1 :]
+    else:
+        user_pre, user_ros = rest, []
+
+    print(f"[franka_robot_env_node] mode: {mode}", flush=True)
     print(f"[franka_robot_env_node] loading config: {config_path}", flush=True)
-    if "--ros-args" in argv:
-        return argv + ["--params-file", str(config_path)]
-    return argv + ["--ros-args", "--params-file", str(config_path)]
+    for key in applied:
+        print(f"    {key:<20}:= {overrides[key]}", flush=True)
+
+    return (
+        [argv[0]]
+        + user_pre
+        + ["--ros-args", "--params-file", str(config_path)]
+        + override_args
+        + user_ros
+    )
 
 
 def _json_default(value: Any):

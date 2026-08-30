@@ -1,18 +1,27 @@
 droid_ros:
   ros__parameters:
     topic_prefix: /droid_ros
-    # action_enabled: false
-    # action_toggle_topic: /gello/switch/record
-    # ramp_action_on_enable: true
-    # action_topic: /gello/joint_command
-    # action_space: joint_position
 
-    action_enabled: true
-    action_topic: /droid_ros/action
-    action_toggle_topic: /droid_ros/action_toggle
+    # Action wiring, selected at launch with:  franka_ros <mode>
+    #   record  - teleop; the arm follows the Gello leader arm, and the Gello
+    #             record button (/gello/switch/record) engages/disengages it.
+    #   deploy  - policy rollout; the arm follows /droid_ros/action, enabled
+    #             from startup so the inference node can drive it immediately.
+    # A mode may only set action_enabled, action_topic, action_toggle_topic and
+    # control_hz. Every other setting below is shared by both modes.
+    modes:
+      record:
+        action_enabled: false
+        action_topic: /gello/joint_command
+        action_toggle_topic: /gello/switch/record
+      deploy:
+        action_enabled: true
+        action_topic: /droid_ros/action
+        action_toggle_topic: /droid_ros/action_toggle
+
     ramp_action_on_enable: true
     action_space: joint_position
-    
+
     action_ramp_duration_sec: 1.0
     home_topic: /droid_ros/go_home
     enable_home_subscriber: true
