@@ -156,6 +156,68 @@ droid_home
 
 ROS2 Humble uses Python 3.10. If `rclpy` import fails inside a conda Python, source the ROS2 environment and run with the ROS-compatible Python environment instead.
 
+### OpenPI Remote Evaluation
+
+For OpenPI evaluation, keep ROS2/DROID on the `droid` Python 3.10 environment and run the OpenPI policy as a separate websocket server. This avoids importing the full OpenPI model stack inside the ROS2 process.
+
+Install the lightweight OpenPI client into the `droid` environment:
+
+```bash
+conda activate droid
+python -m pip install -e /home/rllab2/jellyho/openpi/packages/openpi-client
+python -m pip install numpy==2.2.6
+```
+
+The second command restores the NumPy version expected by OpenCV/ZED packages in this DROID environment. The OpenPI client declares `numpy<2`, but the websocket client path works with NumPy 2.x.
+
+Verify the ROS client dependencies:
+
+```bash
+conda activate droid
+python -c "import rclpy, cv2; from openpi_client import websocket_client_policy, image_tools; print('OpenPI ROS client OK')"
+```
+
+Start the policy server in a separate terminal:
+
+```bash
+cd /home/rllab2/jellyho/droid
+./scripts/openpi/run_policy_server.sh
+```
+
+The server script defaults to:
+
+- `OPENPI_ROOT=/home/rllab2/jellyho/openpi`
+- `POLICY_CONFIG=pi05_droid_finetune_pressing`
+- `CHECKPOINT_DIR=/home/rllab2/jellyho/checkpoints/pi05_droid_finetune_pressing/pressing_run/19999`
+- `PORT=8000`
+
+Override any of these as environment variables:
+
+```bash
+PORT=8001 CHECKPOINT_DIR=/path/to/checkpoint ./scripts/openpi/run_policy_server.sh
+```
+
+Start the interactive ROS2 evaluation client after the Franka node and policy server are running:
+
+```bash
+cd /home/rllab2/jellyho/droid
+./scripts/openpi/run_ros_eval_client.sh
+```
+
+The evaluation client loads `ros2/droid_robot_env/config/openpi_inference.yaml`. For server mode, keep:
+
+```yaml
+policy_mode: "remote"
+remote_host: "127.0.0.1"
+remote_port: 8000
+go_home_on_start: true
+go_home_between_rollouts: true
+go_home_wait_sec: 5.0
+confirm_home: true
+```
+
+The client will send the robot home through `/droid_ros/go_home` when it starts, ask whether the robot is home, and retry homing if you answer `n` or `retry`. It then asks for a language instruction, optionally sends the robot home again between later rollouts, waits for Enter to start, shows a timestep progress bar, lets Enter interrupt the rollout, asks success/failure, saves an evaluation video, and asks whether to continue. Press Enter at the next language prompt to reuse the previous instruction.
+
 ### LeRobot Dataset Collection Node
 
 `droid_robot_env` also provides a dataset collection node that listens to the DROID ROS2 node and a Gello node. It subscribes to configurable robot state topics and camera streams, records actions, and uses Gello buttons to control episode recording.

@@ -1,24 +1,32 @@
 droid_ros:
   ros__parameters:
     topic_prefix: /droid_ros
-    action_enabled: false
-    action_topic: /gello/joint_command
-    action_toggle_topic: /gello/switch/record
+    # action_enabled: false
+    # action_toggle_topic: /gello/switch/record
+    # ramp_action_on_enable: true
+    # action_topic: /gello/joint_command
+    # action_space: joint_position
+
+    action_enabled: true
+    action_topic: /droid_ros/action
+    action_toggle_topic: /droid_ros/action_toggle
     ramp_action_on_enable: true
+    action_space: joint_position
+    
     action_ramp_duration_sec: 1.0
     home_topic: /droid_ros/go_home
     enable_home_subscriber: true
     home_trigger_value: true
     home_randomize: false
 
-    action_space: joint_position
     gripper_action_space: position
-    control_hz: 10.0
+    control_hz: 15.0
     publish_timing_log_period_sec: 0.0
     do_reset: true
     publish_json_topics: false
 
     publish_cameras: true
+    publish_depth: false
     async_image_publish: true
     camera_transport: compressed # raw
     compressed_image_format: jpeg
