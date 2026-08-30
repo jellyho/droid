@@ -145,9 +145,21 @@ class ZedCamera:
         sl_params.set_from_serial_number(int(self.serial_number))
         sl_params.camera_image_flip = sl.FLIP_MODE.OFF
         sl_params.open_timeout_sec = -1 # infinite attempts to open camera
+
+        # Disable depth computation unless depth/pointcloud is actually requested.
+        # Without this the ZED SDK computes a depth map on every grab() even when
+        # we never retrieve it, wasting GPU and adding latency.
+        need_depth = getattr(self, "depth", False) or getattr(self, "pointcloud", False)
+        if hasattr(sl.DEPTH_MODE, "NONE"):
+            sl_params.depth_mode = sl.DEPTH_MODE.PERFORMANCE if need_depth else sl.DEPTH_MODE.NONE
+
         status = self._cam.open(sl_params)
         if status != sl.ERROR_CODE.SUCCESS:
             raise RuntimeError("Camera Failed To Open")
+
+        # Match runtime depth flag to depth mode #
+        if hasattr(self._runtime, "enable_depth"):
+            self._runtime.enable_depth = need_depth
 
         # Save Intrinsics #
         self.latency = int(2.5 * (1e3 / sl_params.camera_fps))
@@ -215,6 +227,12 @@ class ZedCamera:
                     self.serial_number + "_left": self._process_frame(self._left_img),
                     self.serial_number + "_right": self._process_frame(self._right_img),
                 }
+
+        if self.depth:
+            self._cam.retrieve_measure(self._left_depth, sl.MEASURE.DEPTH, resolution=self.zed_resolution)
+            data_dict['depth'] = {
+                self.serial_number + '_left': self._left_depth.get_data().copy(),
+            }
 
         return data_dict, timestamp_dict
 

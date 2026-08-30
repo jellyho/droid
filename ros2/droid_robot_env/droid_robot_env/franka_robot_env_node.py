@@ -783,6 +783,13 @@ class FrankaRobotEnvNode(Node):
                 for cam_id, image in obs.get("image", {}).items():
                     self._publish_camera_image(cam_id, image, stamp, camera_transport)
         breakdown["camera_images_ms"] = (time.perf_counter() - camera_start) * 1000.0
+
+        depth_start = time.perf_counter()
+        if bool(self.get_parameter("publish_cameras").value):
+            for cam_id, depth_arr in obs.get("depth", {}).items():
+                self._publish_depth_image(cam_id, depth_arr, stamp)
+        breakdown["depth_ms"] = (time.perf_counter() - depth_start) * 1000.0
+
         self._last_publish_breakdown = {key: round(value, 1) for key, value in breakdown.items()}
 
         if not self._published_first_observation:
@@ -843,6 +850,28 @@ class FrankaRobotEnvNode(Node):
         image_format = str(self.get_parameter("compressed_image_format").value).lower()
         jpeg_quality = int(self.get_parameter("compressed_jpeg_quality").value)
         pub.publish(_compressed_image_msg(image, cam_id, stamp, image_format, jpeg_quality))
+
+    def _publish_depth_image(self, cam_id, depth_arr, stamp):
+        """Publish depth as a raw Image (32FC1, meters)."""
+        topic = self._topic(f"camera/{cam_id}/depth/image_raw")
+        publisher_key = (cam_id, "depth")
+        pub = self._camera_publishers.get(publisher_key)
+        if pub is None:
+            pub = self.create_publisher(Image, topic, 5)
+            self._camera_publishers[publisher_key] = pub
+            self.get_logger().info(f"Publishing depth stream: {topic}")
+        depth_f32 = np.ascontiguousarray(depth_arr, dtype=np.float32)
+        if depth_f32.ndim == 3:
+            depth_f32 = depth_f32[:, :, 0]
+        msg = Image()
+        msg.header.stamp = stamp
+        msg.header.frame_id = cam_id
+        msg.height, msg.width = depth_f32.shape
+        msg.encoding = "32FC1"
+        msg.is_bigendian = False
+        msg.step = msg.width * 4
+        msg.data = depth_f32.tobytes()
+        pub.publish(msg)
 
     def _publish_json(self, publisher, data):
         msg = String()
